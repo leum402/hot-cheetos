@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template_string
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from datetime import datetime
 import json
@@ -13,15 +13,20 @@ last_update = None
 
 @app.route('/')
 def home():
-    return """
-    <h1>📊 Stock Monitor API</h1>
-    <p>Endpoints:</p>
-    <ul>
-        <li>GET /api/stocks - 현재 주식 데이터</li>
-        <li>POST /api/update - 데이터 업데이트</li>
-        <li>GET /api/status - 서버 상태</li>
-    </ul>
-    """
+    """static 폴더의 index.html 파일 서빙"""
+    if os.path.exists('static/index.html'):
+        return send_file('static/index.html')
+    else:
+        # index.html이 없을 때 API 정보 표시
+        return """
+        <h1>📊 Stock Monitor API</h1>
+        <p>Endpoints:</p>
+        <ul>
+            <li>GET /api/stocks - 현재 주식 데이터</li>
+            <li>POST /api/update - 데이터 업데이트</li>
+            <li>GET /api/status - 서버 상태</li>
+        </ul>
+        """
 
 @app.route('/api/stocks', methods=['GET'])
 def get_stocks():
@@ -67,8 +72,6 @@ def status():
     })
 
 if __name__ == '__main__':
-    # 중요! PORT 환경변수 사용 - 기본값 8080으로 변경
     port = int(os.environ.get('PORT', 8080))
     print(f"🚀 Flask 서버 시작: http://0.0.0.0:{port}")
-    # debug=False 필수! (프로덕션)
     app.run(debug=False, host='0.0.0.0', port=port)
