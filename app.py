@@ -67,8 +67,8 @@ def status():
     })
 
 if __name__ == '__main__':
-    # PORT 환경변수 사용 (중요!)
+    # 중요! PORT 환경변수 사용 - 기본값 8080으로 변경
     port = int(os.environ.get('PORT', 8080))
     print(f"🚀 Flask 서버 시작: http://0.0.0.0:{port}")
-    # debug=False로 변경 (프로덕션)
+    # debug=False 필수! (프로덕션)
     app.run(debug=False, host='0.0.0.0', port=port)
