@@ -16,7 +16,7 @@ def run_scraper():
     env['API_URL'] = 'http://localhost:8080/api/update'
     subprocess.run(['python', 'scraper.py'], env=env, input='2\n', text=True)
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # ← 수정됨
     # Flask 스레드 시작
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
