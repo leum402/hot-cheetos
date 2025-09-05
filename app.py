@@ -7,9 +7,46 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# 데이터 저장
-stocks_data = []
-last_update = None
+# 초기 테스트 데이터 추가
+stocks_data = [
+    {
+        "rank": 1,
+        "name": "삼성전자",
+        "price": "87,500원",
+        "rate": "+29.95%",
+        "summary": "🟢 호재: AI 반도체 대규모 수주 기대\n🔴 악재: 글로벌 규제 리스크"
+    },
+    {
+        "rank": 2,
+        "name": "SK하이닉스",
+        "price": "142,300원",
+        "rate": "+25.32%",
+        "summary": "🟢 호재: HBM4 양산 돌입 발표\n🔴 악재: 메모리 가격 조정 압력"
+    },
+    {
+        "rank": 3,
+        "name": "카카오",
+        "price": "58,900원",
+        "rate": "+21.24%",
+        "summary": "🟢 호재: 신규 AI 서비스 공개\n🔴 악재: 플랫폼 규제 리스크"
+    },
+    {
+        "rank": 4,
+        "name": "네이버",
+        "price": "185,200원",
+        "rate": "+18.56%",
+        "summary": "🟢 호재: 일본 계열 실적 호조\n🔴 악재: 광고 성장 둔화"
+    },
+    {
+        "rank": 5,
+        "name": "현대차",
+        "price": "245,000원",
+        "rate": "+15.87%",
+        "summary": "🟢 호재: EV 판매 1위 기대\n🔴 악재: 원자재 비용 부담"
+    }
+]
+
+last_update = datetime.now().isoformat()
 
 @app.route('/')
 def home():
@@ -17,7 +54,6 @@ def home():
     if os.path.exists('static/index.html'):
         return send_file('static/index.html')
     else:
-        # index.html이 없을 때 API 정보 표시
         return """
         <h1>📊 Stock Monitor API</h1>
         <p>Endpoints:</p>
