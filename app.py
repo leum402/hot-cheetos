@@ -5,9 +5,9 @@ import json
 import os
 
 app = Flask(__name__)
-CORS(app)  # 모든 도메인에서 접근 가능
+CORS(app)
 
-# 데이터 저장 (실제로는 DB 사용 권장)
+# 데이터 저장
 stocks_data = []
 last_update = None
 
@@ -41,9 +41,8 @@ def update_stocks():
         stocks_data = request.json
         last_update = datetime.now().isoformat()
         
-        # 로그 출력
         print(f"✅ 데이터 업데이트: {len(stocks_data)}개 종목")
-        for stock in stocks_data[:3]:  # 상위 3개만 출력
+        for stock in stocks_data[:3]:
             print(f"  - {stock['rank']}위: {stock['name']} ({stock['rate']})")
         
         return jsonify({
@@ -68,5 +67,8 @@ def status():
     })
 
 if __name__ == '__main__':
-    print("🚀 Flask 서버 시작: http://127.0.0.1:5001")
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    # PORT 환경변수 사용 (중요!)
+    port = int(os.environ.get('PORT', 8080))
+    print(f"🚀 Flask 서버 시작: http://0.0.0.0:{port}")
+    # debug=False로 변경 (프로덕션)
+    app.run(debug=False, host='0.0.0.0', port=port)
