@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+.env
+*.pyc
+__pycache__/
+venv/
+news_cache.json
+latest_stocks.json

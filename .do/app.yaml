@@ -1,0 +1,26 @@
+name: hot-cheetos
+region: sgp
+services:
+- dockerfile_path: Dockerfile
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: leum402/hot-cheetos
+  health_check:
+    http_path: /api/status
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: basic-xs
+  name: hot-cheetos-service
+  run_command: python app.py
+  source_dir: /
+envs:
+- key: OPENAI_API_KEY
+  scope: RUN_TIME
+  type: SECRET
+- key: PORT
+  scope: RUN_TIME
+  value: "8080"
+- key: PYTHONUNBUFFERED
+  scope: RUN_TIME
+  value: "1"

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>급등주 TOP 10 | 실시간 주식 대시보드</title>
+  <style>
+    /* ===== 공통/테마 ===== */
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg-primary:#0a0e1a;--bg-secondary:#141922;--bg-card:#1c2333;
+      --text-primary:#fff;--text-secondary:#8892a6;
+      --accent-red:#ff4757;--accent-green:#00d68f;--accent-blue:#5f72ff;
+      --gradient-primary:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      --gradient-red:linear-gradient(135deg,#ff4757 0%,#e91e63 100%);
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;overflow-x:hidden}
+    .container{max-width:480px;margin:0 auto;position:relative}
+    /* ===== 상태 ===== */
+    .connection-status{position:fixed;top:10px;right:10px;z-index:1000;background:rgba(0,0,0,.8);padding:8px 15px;border-radius:20px;font-size:12px;display:flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(10px)}
+    .status-dot{width:8px;height:8px;border-radius:50%;animation:pulse 2s infinite}
+    .status-dot.connected{background:#00ff88}.status-dot.disconnected{background:#ff4757}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+    /* ===== 헤더 ===== */
+    .header{background:var(--gradient-primary);padding:25px 20px;position:sticky;top:0;z-index:100;box-shadow:0 10px 30px rgba(102,126,234,.2)}
+    .header-content{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+    .header h1{font-size:24px;font-weight:700;display:flex;gap:10px;align-items:center}
+    .rocket-icon{font-size:28px}
+    .live-indicator{display:flex;gap:6px;align-items:center;background:rgba(255,255,255,.2);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600}
+    .live-dot{width:8px;height:8px;background:#00ff88;border-radius:50%;animation:pulse 1.5s infinite}
+    .update-time{font-size:13px;opacity:.9;display:flex;gap:5px;align-items:center}
+    /* ===== 통계 ===== */
+    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:15px;background:var(--bg-secondary)}
+    .stat-card{background:var(--bg-card);padding:15px;border-radius:12px;text-align:center;border:1px solid rgba(255,255,255,.05)}
+    .stat-value{font-size:20px;font-weight:700;margin-bottom:5px}
+    .stat-label{font-size:11px;color:var(--text-secondary);letter-spacing:.5px;text-transform:uppercase}
+    /* ===== 모드 ===== */
+    .mode-switch{display:flex;gap:10px;padding:10px 15px;background:var(--bg-secondary);border-bottom:1px solid rgba(255,255,255,.05)}
+    .mode-btn{flex:1;padding:10px;border:none;background:var(--bg-card);color:var(--text-secondary);border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+    .mode-btn.active{background:var(--gradient-primary);color:#fff}
+    /* ===== 리스트 ===== */
+    .stocks-container{padding:15px 15px 80px;min-height:400px}
+    .stock-card{background:var(--bg-card);border-radius:16px;margin-bottom:12px;overflow:hidden;border:1px solid rgba(255,255,255,.05);animation:slideIn .5s ease-out}
+    @keyframes slideIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+    .stock-header{padding:15px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.05)}
+    .stock-info{display:flex;gap:12px;align-items:center;flex:1}
+    .rank-badge{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;background:var(--gradient-primary)}
+    .rank-badge.top1{background:linear-gradient(135deg,#ffd700 0%,#ffb347 100%)}
+    .rank-badge.top2{background:linear-gradient(135deg,#c0c0c0 0%,#b8b8b8 100%)}
+    .rank-badge.top3{background:linear-gradient(135deg,#cd7f32 0%,#b87333 100%)}
+    .stock-name h3{font-size:16px;font-weight:600;margin-bottom:3px}
+    .stock-price{font-size:13px;color:var(--text-secondary)}
+    .rate-badge{padding:8px 14px;border-radius:10px;font-weight:700;font-size:15px;min-width:70px;text-align:center;background:var(--gradient-red)}
+    .stock-news{padding:15px;background:rgba(0,0,0,.2)}
+    .news-title{display:flex;gap:6px;align-items:center;font-size:13px;font-weight:600;margin-bottom:6px}
+    .news-good{color:var(--accent-green)} .news-bad{color:var(--accent-red)}
+    .news-content{font-size:12px;line-height:1.5;color:var(--text-secondary);padding-left:20px}
+    .news-content a{color:#5f72ff;text-decoration:underline} .news-content a:active{opacity:.85}
+    /* 로딩/기타 */
+    .loading-container{text-align:center;padding:40px}
+    .loading-spinner{width:50px;height:50px;border:3px solid var(--bg-card);border-top:3px solid var(--accent-blue);border-radius:50%;animation:spin 1s linear infinite;margin:20px auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty-state{text-align:center;padding:60px 20px}.empty-icon{font-size:64px;margin-bottom:20px;opacity:.5}
+    .empty-title{font-size:18px;margin-bottom:10px;color:var(--text-secondary)}
+    .empty-desc{font-size:14px;color:var(--text-secondary);opacity:.7}
+    .fab-refresh{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:var(--gradient-primary);color:#fff;border:none;box-shadow:0 8px 25px rgba(102,126,234,.4);font-size:24px;z-index:1000}
+    .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(0,0,0,.9);color:#fff;padding:12px 20px;border-radius:25px;font-size:14px;opacity:0;transition:.3s;z-index:1001}
+    .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+    @media (min-width:768px){.container{max-width:768px}.stocks-container{display:grid;grid-template-columns:repeat(2,1fr);gap:15px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 연결 상태 -->
+    <div class="connection-status">
+      <div class="status-dot disconnected" id="statusDot"></div>
+      <span id="statusText">연결 대기중</span>
+    </div>
+
+    <!-- 헤더 -->
+    <div class="header">
+      <div class="header-content">
+        <h1><span class="rocket-icon">🚀</span>급등주 TOP 10</h1>
+        <div class="live-indicator"><div class="live-dot"></div>LIVE</div>
+      </div>
+      <div class="update-time"><span>⏰</span><span id="updateTime">업데이트 중...</span></div>
+    </div>
+
+    <!-- 통계 -->
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value" style="color:var(--accent-red)"><span id="avgRate">+0%</span></div><div class="stat-label">평균 상승률</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--accent-green)"><span id="goodNewsCount">0</span></div><div class="stat-label">호재 종목</div></div>
+      <div class="stat-card"><div class="stat-value" style="color:var(--accent-blue)"><span id="totalVolume">0</span></div><div class="stat-label">거래량 지수</div></div>
+    </div>
+
+    <!-- 모드 -->
+    <div class="mode-switch">
+      <button class="mode-btn active" id="liveMode" onclick="switchMode('live')">🔴 실시간 모드</button>
+      <button class="mode-btn" id="testMode" onclick="switchMode('test')">🧪 테스트 모드</button>
+    </div>
+
+    <!-- 리스트 -->
+    <div class="stocks-container" id="stocksList">
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <p style="color:var(--text-secondary);margin-top:20px;">데이터를 불러오는 중...</p>
+      </div>
+    </div>
+
+    <!-- FAB & 토스트 -->
+    <button class="fab-refresh" id="refreshBtn" onclick="manualRefresh()">↻</button>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script>
+    const CONFIG = {
+      API_URL: 'http://127.0.0.1:5001/api/stocks',
+      API_STATUS_URL: 'http://127.0.0.1:5001/api/status',
+      REFRESH_INTERVAL: 10000,
+      MODE: 'test'
+    };
+
+    let isLoading=false, autoRefreshInterval=null, connectionCheckInterval=null;
+
+    // 테스트용 모의 데이터(링크 포함 예시)
+    const mockData = [
+      {rank:1,name:"삼성전자",price:"87,500",rate:"+29.95%",summary:"🟢 호재: AI 반도체 대규모 수주 기대\n🔴 악재: 글로벌 규제 리스크",bullish_url:"https://example.com/bullish-1",bearish_url:"https://example.com/bearish-1"},
+      {rank:2,name:"SK하이닉스",price:"142,300",rate:"+28.32%",summary:"🟢 호재: HBM4 양산 돌입 발표\n🔴 악재: 메모리 가격 조정 압력",bullish_url:"https://example.com/bullish-2",bearish_url:"https://example.com/bearish-2"},
+      {rank:3,name:"카카오",price:"58,900",rate:"+25.18%",summary:"🟢 호재: 신규 AI 서비스 공개\n🔴 악재: 플랫폼 규제 리스크",bullish_url:"https://example.com/bullish-3",bearish_url:"https://example.com/bearish-3"},
+      {rank:4,name:"네이버",price:"185,200",rate:"+22.45%",summary:"🟢 호재: 일본 계열 실적 호조\n🔴 악재: 광고 성장 둔화",bullish_url:"https://example.com/bullish-4",bearish_url:"https://example.com/bearish-4"},
+      {rank:5,name:"현대차",price:"245,000",rate:"+19.87%",summary:"🟢 호재: EV 판매 1위 기대\n🔴 악재: 원자재 비용 부담",bullish_url:"https://example.com/bullish-5",bearish_url:"https://example.com/bearish-5"},
+      {rank:6,name:"LG화학",price:"485,000",rate:"+18.65%",summary:"🟢 호재: 북미 수주 확대\n🔴 악재: 가격 경쟁 심화",bullish_url:"https://example.com/bullish-6",bearish_url:"https://example.com/bearish-6"},
+      {rank:7,name:"포스코홀딩스",price:"392,500",rate:"+17.23%",summary:"🟢 호재: 리튬사업 가속\n🔴 악재: 철강 수요 둔화",bullish_url:"https://example.com/bullish-7",bearish_url:"https://example.com/bearish-7"},
+      {rank:8,name:"삼성SDI",price:"425,000",rate:"+16.54%",summary:"🟢 호재: 전고체 로드맵 확정\n🔴 악재: 설비투자 부담",bullish_url:"https://example.com/bullish-8",bearish_url:"https://example.com/bearish-8"},
+      {rank:9,name:"셀트리온",price:"178,900",rate:"+15.82%",summary:"🟢 호재: 유럽 승인 소식\n🔴 악재: 경쟁 심화",bullish_url:"https://example.com/bullish-9",bearish_url:"https://example.com/bearish-9"},
+      {rank:10,name:"기아",price:"115,200",rate:"+14.95%",summary:"🟢 호재: EV9 흥행 조짐\n🔴 악재: 부품 수급 불안",bullish_url:"https://example.com/bullish-10",bearish_url:"https://example.com/bearish-10"}
+    ];
+
+    function switchMode(mode){
+      CONFIG.MODE = mode;
+      document.getElementById('liveMode').classList.toggle('active', mode==='live');
+      document.getElementById('testMode').classList.toggle('active', mode==='test');
+      fetchStockData();
+      showToast(mode==='test'?'🧪 테스트 모드로 전환':'🔴 실시간 모드로 전환');
+    }
+
+    async function checkConnection(){
+      const dot=document.getElementById('statusDot'), text=document.getElementById('statusText');
+      try{
+        const r=await fetch(CONFIG.API_STATUS_URL,{method:'GET',mode:'cors',cache:'no-cache'});
+        if(r.ok){ dot.className='status-dot connected'; text.textContent='API 연결됨'; return true; }
+        throw new Error('API 응답 오류');
+      }catch{
+        dot.className='status-dot disconnected'; text.textContent='API 연결 안됨'; return false;
+      }
+    }
+
+    async function fetchStockData(){
+      if(isLoading) return; isLoading=true;
+      const refreshBtn=document.getElementById('refreshBtn'); refreshBtn.classList.add('rotating');
+      try{
+        let data=[];
+        if(CONFIG.MODE==='test'){
+          data = mockData.map(s=>({...s}));
+          data = data.map(s=>({...s, rate:`+${(parseFloat(s.rate)+Math.random()*2-1).toFixed(2)}%`}));
+        }else{
+          const ok=await checkConnection();
+          if(!ok) throw new Error('API 서버에 연결할 수 없습니다');
+          const r=await fetch(CONFIG.API_URL,{method:'GET',mode:'cors',headers:{'Accept':'application/json'}});
+          if(!r.ok) throw new Error(`HTTP ${r.status}`);
+          const payload=await r.json();
+          data = Array.isArray(payload.stocks)? payload.stocks : [];
+        }
+        if(data.length){ renderStocks(data); updateStats(data); updateTime(); showToast(CONFIG.MODE==='test'?'🧪 테스트 데이터 로드':'✅ 실시간 업데이트'); }
+        else { renderEmptyState(); showToast('📊 아직 데이터가 없습니다'); }
+      }catch(e){
+        console.error(e);
+        if(CONFIG.MODE==='live'){ showToast('⚠️ API 실패 → 테스트 모드 전환'); setTimeout(()=>switchMode('test'),1200); }
+        else{ renderErrorState(e.message); showToast('❌ 데이터 로드 실패'); }
+      }finally{
+        isLoading=false; setTimeout(()=>refreshBtn.classList.remove('rotating'),600);
+      }
+    }
+
+    function renderStocks(stocks){
+      const c=document.getElementById('stocksList'); c.innerHTML='';
+      stocks.forEach((s,i)=>{ const card=createStockCard(s); card.style.animationDelay=`${i*0.05}s`; c.appendChild(card); });
+    }
+
+    function createStockCard(stock){
+      const card=document.createElement('div'); card.className='stock-card';
+      let rankClass=''; if(stock.rank===1)rankClass='top1'; else if(stock.rank===2)rankClass='top2'; else if(stock.rank===3)rankClass='top3';
+      const lines = (stock.summary||'').split('\n');
+      const goodNews = lines.find(l=>l.includes('🟢'))||'';
+      const badNews  = lines.find(l=>l.includes('🔴'))||'';
+      const bullLink = stock.bullish_url || '';
+      const bearLink = stock.bearish_url || '';
+
+      card.innerHTML = `
+        <div class="stock-header">
+          <div class="stock-info">
+            <div class="rank-badge ${rankClass}">${stock.rank}</div>
+            <div class="stock-name">
+              <h3>${stock.name}</h3>
+              <div class="stock-price">${(stock.price||'').toString().replace('원','')}원</div>
+            </div>
+          </div>
+          <div class="rate-badge">${stock.rate}</div>
+        </div>
+        ${(goodNews||badNews)?`
+          <div class="stock-news">
+            ${goodNews?`
+              <div class="news-section">
+                <div class="news-title news-good">${goodNews.substring(0,6)}</div>
+                <div class="news-content">
+                  ${goodNews.substring(7)}
+                  ${bullLink?`&nbsp;<a href="${bullLink}" target="_blank" rel="noopener noreferrer">기사 보기 ↗</a>`:''}
+                </div>
+              </div>`:''}
+            ${badNews?`
+              <div class="news-section">
+                <div class="news-title news-bad">${badNews.substring(0,6)}</div>
+                <div class="news-content">
+                  ${badNews.substring(7)}
+                  ${bearLink?`&nbsp;<a href="${bearLink}" target="_blank" rel="noopener noreferrer">기사 보기 ↗</a>`:''}
+                </div>
+              </div>`:''}
+          </div>`:''
+        }
+      `;
+      card.addEventListener('click', ()=> showToast(`📈 ${stock.name} 상세정보 (준비중)`));
+      return card;
+    }
+
+    function updateStats(stocks){
+      const rates=stocks.map(s=>parseFloat((s.rate||'').replace('%','').replace('+',''))||0);
+      const avg= rates.length? (rates.reduce((a,b)=>a+b,0)/rates.length).toFixed(2):0;
+      document.getElementById('avgRate').textContent = `+${avg}%`;
+      document.getElementById('goodNewsCount').textContent = stocks.filter(s=>s.summary&&s.summary.includes('🟢')).length;
+      document.getElementById('totalVolume').textContent = `${50+Math.floor(Math.random()*50)}K`;
+    }
+
+    function updateTime(){
+      const now=new Date();
+      document.getElementById('updateTime').textContent =
+        now.toLocaleDateString('ko-KR',{month:'short',day:'numeric'})+' '+
+        now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    }
+
+    function renderEmptyState(){
+      document.getElementById('stocksList').innerHTML =
+        `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">데이터가 없습니다</div><div class="empty-desc">잠시 후 자동으로 새로고침됩니다</div></div>`;
+    }
+    function renderErrorState(m){
+      document.getElementById('stocksList').innerHTML = `<div class="error-message">⚠️ 오류: ${m}<br><small>Flask 서버 확인</small></div>`;
+    }
+    function showToast(msg,d=2200){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d)}
+    function manualRefresh(){ if(!isLoading) fetchStockData(); }
+
+    function startAutoRefresh(){ stopAutoRefresh(); autoRefreshInterval=setInterval(fetchStockData, CONFIG.REFRESH_INTERVAL); }
+    function stopAutoRefresh(){ if(autoRefreshInterval){ clearInterval(autoRefreshInterval); autoRefreshInterval=null; } }
+
+    function startConnectionCheck(){
+      connectionCheckInterval = setInterval(()=>{ if(CONFIG.MODE==='live') checkConnection(); }, 5000);
+    }
+
+    document.addEventListener('visibilitychange', ()=> document.hidden?stopAutoRefresh():(startAutoRefresh(),fetchStockData()));
+    document.addEventListener('DOMContentLoaded', ()=>{
+      CONFIG.MODE='test';
+      setInterval(updateTime,1000);
+      startConnectionCheck();
+      setTimeout(fetchStockData,400);
+      startAutoRefresh();
+      document.addEventListener('keydown', e=>{
+        if(e.key==='r'||e.key==='R') manualRefresh();
+        else if(e.key==='t'||e.key==='T') switchMode('test');
+        else if(e.key==='l'||e.key==='L') switchMode('live');
+      });
+    });
+
+    window.addEventListener('online', ()=>{showToast('✅ 네트워크 연결됨'); fetchStockData();});
+    window.addEventListener('offline', ()=> showToast('❌ 네트워크 연결 끊김'));
+  </script>
+</body>
+</html>
