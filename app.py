@@ -11,19 +11,9 @@ import threading
 app = Flask(__name__)
 CORS(app)
 
-# 초기 테스트 데이터 추가
-stocks_data = [{
-    "rank": 1,
-    "name": "데이터 로딩중...",
-    "price": "0원",
-    "rate": "+0.00%",
-    "summary": "🟢 호재: 실시간 데이터 수집 중\n🔴 악재: 잠시만 기다려주세요",
-    "bullish_url": "",
-    "bearish_url": "",
-    "sources": []
-}]
-
-last_update = datetime.now().isoformat()
+# 초기 테스트 데이터 제거
+stocks_data = []  # 빈 배열로 시작
+last_update = None
 
 @app.route('/')
 def home():
