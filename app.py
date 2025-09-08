@@ -182,9 +182,9 @@ def run_scraper_loop():
             traceback.print_exc()
         
         # 다음 실행까지 대기
-        wait_time = 60
+        wait_time = 15
         print(f"\n⏳ {wait_time}초 후 재실행...", flush=True)
-        print("=" * 60, flush=True)
+        print("=" * 15, flush=True)
         
         # 대기 중에도 상태 표시
         for i in range(wait_time, 0, -10):
