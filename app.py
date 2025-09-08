@@ -90,9 +90,9 @@ def update_stocks():
         stocks_data = request.json
         last_update = datetime.now().isoformat()
         
-        print(f"✅ 데이터 업데이트: {len(stocks_data)}개 종목")
+        print(f"✅ 데이터 업데이트: {len(stocks_data)}개 종목", flush=True)
         for stock in stocks_data[:3]:
-            print(f"  - {stock['rank']}위: {stock['name']} ({stock['rate']})")
+            print(f"  - {stock['rank']}위: {stock['name']} ({stock['rate']})", flush=True)
         
         return jsonify({
             'status': 'success',
@@ -118,72 +118,99 @@ def status():
 def run_scraper_loop():
     """백그라운드에서 스크래퍼를 주기적으로 실행"""
     time.sleep(30)  # Flask 서버 시작 대기
-    print("🔄 스크래퍼 백그라운드 루프 시작")
-    print("=" * 60)
+    print("=" * 60, flush=True)
+    print("🔄 스크래퍼 백그라운드 루프 시작", flush=True)
+    print("=" * 60, flush=True)
+    
+    cycle = 0
     
     while True:
+        cycle += 1
+        
         try:
-            print("\n" + "=" * 60)
-            print(f"📊 스크래퍼 실행 시작... [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]")
-            print("=" * 60)
+            print(f"\n{'='*60}", flush=True)
+            print(f"📊 스크래퍼 실행 [{cycle}회차] - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", flush=True)
+            print("=" * 60, flush=True)
             
             env = os.environ.copy()
             env['API_URL'] = 'http://localhost:8080/api/update'
             env['DOCKER_ENV'] = 'true'
-            env['PYTHONUNBUFFERED'] = '1'  # 버퍼링 비활성화
+            env['PYTHONUNBUFFERED'] = '1'
             
-            # 스크래퍼 실행 - 출력 직접 표시
-            process = subprocess.Popen(
+            # 스크래퍼 실행
+            print("🚀 scraper.py 프로세스 시작...", flush=True)
+            
+            result = subprocess.run(
                 [sys.executable, '-u', 'scraper.py', 'auto'],
                 env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                capture_output=True,
                 text=True,
-                bufsize=1  # 라인 버퍼링
+                timeout=120
             )
             
-            # 실시간 출력 표시
-            print("📝 스크래퍼 출력:")
-            print("-" * 60)
+            # 출력 표시
+            if result.stdout:
+                print("\n📝 스크래퍼 출력:", flush=True)
+                print("-" * 60, flush=True)
+                for line in result.stdout.split('\n'):
+                    if line.strip():
+                        print(f"  > {line}", flush=True)
+                print("-" * 60, flush=True)
             
-            for line in iter(process.stdout.readline, ''):
-                if line:
-                    print(f"  SCRAPER> {line.rstrip()}")
+            if result.stderr:
+                print("\n❌ 스크래퍼 에러:", flush=True)
+                print("-" * 60, flush=True)
+                for line in result.stderr.split('\n'):
+                    if line.strip():
+                        print(f"  ERROR> {line}", flush=True)
+                print("-" * 60, flush=True)
             
-            process.wait()
+            print(f"\n종료 코드: {result.returncode}", flush=True)
             
-            print("-" * 60)
-            print(f"스크래퍼 종료 코드: {process.returncode}")
-            print("=" * 60)
-            
-            if process.returncode != 0:
-                print("⚠️ 스크래퍼가 비정상 종료됨")
+            if result.returncode == 0:
+                print("✅ 스크래퍼 정상 종료", flush=True)
+            else:
+                print("⚠️ 스크래퍼 비정상 종료", flush=True)
                 
         except subprocess.TimeoutExpired:
-            print("⏱️ 스크래퍼 타임아웃")
-            process.kill()
+            print("⏱️ 스크래퍼 타임아웃 (120초 초과)", flush=True)
+        except FileNotFoundError as e:
+            print(f"❌ scraper.py 파일을 찾을 수 없음: {e}", flush=True)
         except Exception as e:
-            print(f"❌ 스크래퍼 루프 오류: {e}")
+            print(f"❌ 스크래퍼 실행 오류: {e}", flush=True)
             import traceback
             traceback.print_exc()
-            
+        
         # 다음 실행까지 대기
-        print(f"\n⏳ 60초 후 재실행...")
-        time.sleep(60)
+        wait_time = 60
+        print(f"\n⏳ {wait_time}초 후 재실행...", flush=True)
+        print("=" * 60, flush=True)
+        
+        # 대기 중에도 상태 표시
+        for i in range(wait_time, 0, -10):
+            time.sleep(min(10, i))
+            if i > 10:
+                print(f"  ... {i-10}초 남음", flush=True)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     
+    # 버퍼링 비활성화
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 1)
+    sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', 1)
+    
     # 프로덕션 환경에서만 스크래퍼 실행
-    # (로컬에서는 수동으로 스크래퍼 실행 가능)
     if os.environ.get('PORT'):  # DigitalOcean은 PORT 환경변수를 설정함
-        print("🎯 프로덕션 환경 감지 - 스크래퍼 자동 실행 활성화")
+        print("=" * 60, flush=True)
+        print("🎯 프로덕션 환경 감지 - 스크래퍼 자동 실행 활성화", flush=True)
+        print("=" * 60, flush=True)
         
         # 스크래퍼 백그라운드 스레드 시작
         scraper_thread = threading.Thread(target=run_scraper_loop, daemon=True)
         scraper_thread.start()
+        print("✅ 스크래퍼 스레드 시작됨", flush=True)
     else:
-        print("💻 로컬 환경 - 스크래퍼 수동 실행 필요")
+        print("💻 로컬 환경 - 스크래퍼 수동 실행 필요", flush=True)
     
-    print(f"🚀 Flask 서버 시작: http://0.0.0.0:{port}")
+    print(f"🚀 Flask 서버 시작: http://0.0.0.0:{port}", flush=True)
     app.run(debug=False, host='0.0.0.0', port=port)
