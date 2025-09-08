@@ -28,4 +28,4 @@ ENV CHROME_PATH=/usr/lib/chromium/
 # PORT는 DigitalOcean이 자동으로 설정함
 EXPOSE 8080
 
-CMD ["python", "run.py"]
+CMD ["python", "app.py"]
