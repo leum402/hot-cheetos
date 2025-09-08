@@ -9,7 +9,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 
 import os
@@ -18,6 +17,7 @@ import time
 import json
 import random
 import requests
+import shutil
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Union
 from dotenv import load_dotenv
@@ -37,7 +37,7 @@ def setup_driver():
     options = Options()
     
     # 헤드리스 모드
-    options.add_argument('--headless=new')
+    options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
@@ -46,12 +46,9 @@ def setup_driver():
     
     # 추가 옵션
     options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
     
     try:
-        # Docker 환경에서는 시스템 chromedriver만 사용
-        import shutil
-        
         # chromedriver 경로 찾기
         chromedriver_path = shutil.which('chromedriver')
         if chromedriver_path:
@@ -280,4 +277,3 @@ if __name__ == "__main__":
         
     else:
         print("로컬 수동 모드 - 메뉴 표시")
-        # 기존 수동 모드 코드...
