@@ -280,31 +280,19 @@ bearish_idx는 악재 근거가 되는 헤드라인 번호
     # GPT 호출 (재시도 포함)
     for attempt in range(OPENAI_RETRIES + 1):
         try:
-            if use_new_sdk:
-                # 새 SDK (v1.x)
-                response = client.chat.completions.create(
-                    model=OPENAI_MODEL,
-                    temperature=0.3,
-                    max_tokens=200,
-                    timeout=OPENAI_TIMEOUT,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
-                )
-                content = response.choices[0].message.content.strip()
-            else:
-                # 구 SDK (v0.x)
-                response = openai.ChatCompletion.create(
-                    model=OPENAI_MODEL,
-                    temperature=0.3,
-                    max_tokens=200,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
-                )
-                content = response['choices'][0]['message']['content'].strip()
+            # 최신 SDK (v1.x) - timeout은 create 메소드에 직접 전달
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                temperature=0.3,
+                max_tokens=200,
+                timeout=OPENAI_TIMEOUT,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+            
+            content = response.choices[0].message.content.strip()
             
             # JSON 파싱
             if content.startswith("```"):
