@@ -46,22 +46,35 @@ def setup_driver():
     
     # 추가 옵션
     options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36')
+    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
     
     try:
-        # ChromeDriver 설치/설정
-        try:
-            service = Service(ChromeDriverManager().install())
-            print("✅ ChromeDriverManager 사용", flush=True)
-        except:
-            service = Service('/usr/bin/chromedriver')
-            print("✅ 시스템 chromedriver 사용", flush=True)
+        # Docker 환경에서는 시스템 chromedriver만 사용
+        import shutil
+        
+        # chromedriver 경로 찾기
+        chromedriver_path = shutil.which('chromedriver')
+        if chromedriver_path:
+            print(f"✅ 시스템 chromedriver 발견: {chromedriver_path}", flush=True)
+            service = Service(chromedriver_path)
+        else:
+            # 일반적인 경로들 시도
+            possible_paths = [
+                '/usr/bin/chromedriver',
+                '/usr/local/bin/chromedriver',
+                '/opt/chromedriver/chromedriver'
+            ]
+            
+            for path in possible_paths:
+                if os.path.exists(path):
+                    print(f"✅ chromedriver 발견: {path}", flush=True)
+                    service = Service(path)
+                    break
+            else:
+                raise Exception("chromedriver를 찾을 수 없습니다")
         
         driver = webdriver.Chrome(service=service, options=options)
         print("✅ Chrome 드라이버 생성 완료", flush=True)
-        
-        # JavaScript로 webdriver 속성 숨기기
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         
         return driver
         
