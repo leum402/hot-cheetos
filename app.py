@@ -3,6 +3,11 @@ from flask_cors import CORS
 from datetime import datetime
 import json
 import os
+import time  # ← 이거 추가!
+import subprocess
+import sys
+import threading
+
 
 app = Flask(__name__)
 CORS(app)
