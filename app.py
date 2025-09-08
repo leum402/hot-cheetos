@@ -120,12 +120,10 @@ def run_scraper_once():
     try:
         print("📊 스크래퍼 실행 중...")
         
-        # 환경변수 설정
         env = os.environ.copy()
         env['API_URL'] = 'http://localhost:8080/api/update'
-        env['DOCKER_ENV'] = 'true'  # Docker 환경임을 알림
+        env['DOCKER_ENV'] = 'true'
         
-        # 스크래퍼 실행 (auto 인자로 자동 모드 실행)
         result = subprocess.run(
             [sys.executable, 'scraper.py', 'auto'], 
             env=env,
@@ -134,11 +132,15 @@ def run_scraper_once():
             timeout=120
         )
         
-        # 출력 로그
-        if result.stdout:
-            print(f"스크래퍼 출력:\n{result.stdout[:500]}...")
+        # 전체 출력 로그 (더 자세히)
+        print("=" * 50)
+        print("스크래퍼 전체 출력:")
+        print(result.stdout)
+        print("=" * 50)
+        
         if result.stderr:
-            print(f"스크래퍼 에러:\n{result.stderr[:500]}")
+            print("스크래퍼 에러:")
+            print(result.stderr)
             
         return result.returncode == 0
         
