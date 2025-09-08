@@ -81,10 +81,10 @@ def setup_driver():
         raise
 
 # =========================
-# 토스 데이터 파싱
+# 토스 데이터 파싱 (개선된 버전)
 # =========================
 def parse_toss_stocks(soup):
-    """토스 페이지에서 실제 급등주 데이터 추출"""
+    """토스 페이지에서 실제 급등주 데이터 추출 - 개선된 파싱"""
     stocks = []
     
     # 토스 랭킹 행 찾기
@@ -98,8 +98,16 @@ def parse_toss_stocks(soup):
     
     for i, row in enumerate(rows[:10], 1):
         try:
+            # 디버깅을 위한 raw text 출력
+            raw_text = row.get_text(strip=True)
+            print(f"  [DEBUG] Row {i} raw text: {raw_text[:100]}...", flush=True)
+            
             # 모든 td 요소 가져오기
             cells = row.find_all('td')
+            
+            name = ""
+            price = "0원"
+            rate = "+0.0%"
             
             if len(cells) >= 4:
                 # 일반적인 테이블 구조
@@ -107,7 +115,17 @@ def parse_toss_stocks(soup):
                 
                 # 종목명 (두 번째 셀)
                 name_cell = cells[1]
-                name = name_cell.get_text(strip=True)
+                
+                # a 태그나 span 태그에서 종목명 찾기
+                name_elem = name_cell.find('a') or name_cell.find('span')
+                if name_elem:
+                    name = name_elem.get_text(strip=True)
+                else:
+                    # 직접 텍스트 추출
+                    name = name_cell.get_text(strip=True)
+                
+                # 숫자나 특수문자 제거
+                name = re.sub(r'^\d+', '', name).strip()
                 
                 # 현재가 (세 번째 셀)
                 price_cell = cells[2]
@@ -118,13 +136,18 @@ def parse_toss_stocks(soup):
                 rate = rate_cell.get_text(strip=True)
                 
             else:
-                # 전체 텍스트에서 파싱
-                text = row.get_text(strip=True)
+                # 전체 텍스트에서 파싱 (fallback)
+                text = raw_text
                 
-                # 패턴: "1현대로템211,000원+2.9%26억원"
-                # 숫자 제거하고 종목명 찾기
+                # 더 유연한 패턴으로 종목명 찾기
+                # 1. 숫자로 시작하고 한글/영문이 이어지는 패턴
                 name_match = re.search(r'^\d+([가-힣A-Za-z\s]+?)(?=[\d,]+원)', text)
-                name = name_match.group(1) if name_match else ""
+                if not name_match:
+                    # 2. 첫 번째 한글/영문 단어 찾기
+                    name_match = re.search(r'([가-힣A-Za-z]+[\s가-힣A-Za-z]*?)(?=[\d,]+원)', text)
+                
+                if name_match:
+                    name = name_match.group(1).strip()
                 
                 # 가격 찾기
                 price_match = re.search(r'([\d,]+원)', text)
@@ -134,10 +157,26 @@ def parse_toss_stocks(soup):
                 rate_match = re.search(r'([+-]?[\d.]+%)', text)
                 rate = rate_match.group(1) if rate_match else "+0.0%"
             
-            # 데이터 정리
+            # 종목명 정리 및 검증
             name = name.strip()
-            if not name or name.isdigit():
-                name = f"종목{i}"
+            
+            # 종목명이 비어있거나 숫자만 있는 경우 다시 시도
+            if not name or name.isdigit() or len(name) < 2:
+                print(f"  [DEBUG] 종목명 파싱 실패, raw text에서 재시도", flush=True)
+                
+                # raw_text에서 한글/영문 패턴 찾기
+                all_names = re.findall(r'[가-힣A-Za-z][가-힣A-Za-z\s]+', raw_text)
+                for potential_name in all_names:
+                    # 가격/퍼센트가 아닌 첫 번째 유효한 이름 선택
+                    if not re.search(r'[\d,]+원|[\d.]+%', potential_name):
+                        name = potential_name.strip()
+                        if len(name) > 1:  # 최소 2글자 이상
+                            break
+                
+                # 그래도 실패하면 기본값
+                if not name or len(name) < 2:
+                    name = f"종목{i}"
+                    print(f"  [WARNING] {i}번 종목명 파싱 최종 실패", flush=True)
             
             # + 기호 없으면 추가
             if rate and not rate.startswith(('+', '-')):
