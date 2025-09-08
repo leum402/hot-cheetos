@@ -115,57 +115,60 @@ def status():
         'server_time': datetime.now().isoformat()
     })
 
-def run_scraper_once():
-    """스크래퍼를 한 번 실행하고 결과 반환"""
-    try:
-        print("📊 스크래퍼 실행 중...")
-        
-        env = os.environ.copy()
-        env['API_URL'] = 'http://localhost:8080/api/update'
-        env['DOCKER_ENV'] = 'true'
-        
-        result = subprocess.run(
-            [sys.executable, 'scraper.py', 'auto'], 
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        
-        # 전체 출력 로그 (더 자세히)
-        print("=" * 50)
-        print("스크래퍼 전체 출력:")
-        print(result.stdout)
-        print("=" * 50)
-        
-        if result.stderr:
-            print("스크래퍼 에러:")
-            print(result.stderr)
-            
-        return result.returncode == 0
-        
-    except subprocess.TimeoutExpired:
-        print("⏱️ 스크래퍼 타임아웃")
-        return False
-    except Exception as e:
-        print(f"❌ 스크래퍼 오류: {e}")
-        return False
-
 def run_scraper_loop():
     """백그라운드에서 스크래퍼를 주기적으로 실행"""
     time.sleep(30)  # Flask 서버 시작 대기
     print("🔄 스크래퍼 백그라운드 루프 시작")
+    print("=" * 60)
     
     while True:
         try:
-            success = run_scraper_once()
-            if not success:
-                print("⚠️ 스크래퍼 실행 실패, 다음 주기에 재시도")
+            print("\n" + "=" * 60)
+            print(f"📊 스크래퍼 실행 시작... [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]")
+            print("=" * 60)
+            
+            env = os.environ.copy()
+            env['API_URL'] = 'http://localhost:8080/api/update'
+            env['DOCKER_ENV'] = 'true'
+            env['PYTHONUNBUFFERED'] = '1'  # 버퍼링 비활성화
+            
+            # 스크래퍼 실행 - 출력 직접 표시
+            process = subprocess.Popen(
+                [sys.executable, '-u', 'scraper.py', 'auto'],
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1  # 라인 버퍼링
+            )
+            
+            # 실시간 출력 표시
+            print("📝 스크래퍼 출력:")
+            print("-" * 60)
+            
+            for line in iter(process.stdout.readline, ''):
+                if line:
+                    print(f"  SCRAPER> {line.rstrip()}")
+            
+            process.wait()
+            
+            print("-" * 60)
+            print(f"스크래퍼 종료 코드: {process.returncode}")
+            print("=" * 60)
+            
+            if process.returncode != 0:
+                print("⚠️ 스크래퍼가 비정상 종료됨")
                 
+        except subprocess.TimeoutExpired:
+            print("⏱️ 스크래퍼 타임아웃")
+            process.kill()
         except Exception as e:
             print(f"❌ 스크래퍼 루프 오류: {e}")
+            import traceback
+            traceback.print_exc()
             
-        # 다음 실행까지 대기 (60초)
+        # 다음 실행까지 대기
+        print(f"\n⏳ 60초 후 재실행...")
         time.sleep(60)
 
 if __name__ == '__main__':
