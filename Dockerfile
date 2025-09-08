@@ -28,9 +28,4 @@ ENV CHROME_PATH=/usr/lib/chromium/
 # PORT는 DigitalOcean이 자동으로 설정함
 EXPOSE 8080
 
-# 하나의 CMD만 사용 - 선택하세요:
-# 옵션 1: Flask만 실행 (현재 작동하는 방식)
-CMD ["python", "app.py"]
-
-# 옵션 2: run.py로 Flask와 스크래퍼 모두 실행
-# CMD ["python", "run.py"]
+CMD ["python", "run.py"]
