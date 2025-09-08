@@ -109,5 +109,27 @@ def status():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
+    
+    # 백그라운드에서 스크래퍼 실행
+    import threading
+    import subprocess
+    import sys
+    
+    def run_scraper_loop():
+        time.sleep(30)
+        print("🔄 스크래퍼 백그라운드 시작")
+        
+        while True:
+            try:
+                print("📊 테스트 데이터 생성 중...")
+                # 테스트 모드로 실행 (토스 크롤링은 Docker에서 어려울 수 있음)
+                subprocess.run([sys.executable, 'scraper.py'], input='2\n', text=True, timeout=120)
+            except Exception as e:
+                print(f"스크래퍼 오류: {e}")
+            time.sleep(60)
+    
+    scraper_thread = threading.Thread(target=run_scraper_loop, daemon=True)
+    scraper_thread.start()
+    
     print(f"🚀 Flask 서버 시작: http://0.0.0.0:{port}")
     app.run(debug=False, host='0.0.0.0', port=port)
