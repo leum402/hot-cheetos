@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # Chrome 및 필요 패키지 설치
 RUN apt-get update && apt-get install -y \
