@@ -329,7 +329,7 @@ if __name__ == "__main__":
         print("-"*40, flush=True)
         
         # 토스 크롤링 시도 (옵션)
-        try_crawling = False  # 일단 비활성화
+        try_crawling = True  # 일단 비활성화
         
         if try_crawling:
             try:
