@@ -333,12 +333,23 @@ def get_gpt_news_with_context_cached(stock_name: str, current_rate: str) -> dict
 # =========================
 def setup_driver():
     options = Options()
-    # options.add_argument('--headless')
+    options.add_argument('--headless')  # ← 주석 해제 필수!
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1920,1080')
-    service = Service(ChromeDriverManager().install())
+    
+    # Docker 환경을 위한 추가 옵션
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+    
+    # ChromeDriver 경로 자동 설정
+    try:
+        service = Service(ChromeDriverManager().install())
+    except:
+        # Docker 환경에서 실패 시 직접 경로 지정
+        service = Service('/usr/bin/chromedriver')
+    
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
