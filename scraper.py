@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-토스 크롤링 진단용 간소화 버전
+토스 크롤링 - ChromeDriver 진단 버전
 """
 
 from selenium import webdriver
@@ -18,6 +18,7 @@ import json
 import random
 import requests
 import shutil
+import subprocess
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Union
 from dotenv import load_dotenv
@@ -172,56 +173,82 @@ def try_toss_crawling():
     print("="*60, flush=True)
 
 # =========================
-# 테스트 데이터 생성
+# 테스트 데이터 생성 (개선된 버전)
 # =========================
 def generate_test_data():
     print("\n📊 테스트 데이터 생성", flush=True)
     
-    # 실제 급등주처럼 보이는 데이터
-    test_stocks = [
-        {"name": "에코프로", "price": "152,400원", "rate": f"+{25 + random.uniform(0, 5):.2f}%"},
-        {"name": "에코프로비엠", "price": "98,300원", "rate": f"+{22 + random.uniform(0, 5):.2f}%"},
-        {"name": "포스코DX", "price": "45,200원", "rate": f"+{20 + random.uniform(0, 5):.2f}%"},
-        {"name": "HD현대중공업", "price": "112,500원", "rate": f"+{18 + random.uniform(0, 5):.2f}%"},
-        {"name": "한미반도체", "price": "78,600원", "rate": f"+{16 + random.uniform(0, 5):.2f}%"},
-        {"name": "엘앤에프", "price": "234,500원", "rate": f"+{15 + random.uniform(0, 5):.2f}%"},
-        {"name": "두산에너빌리티", "price": "18,900원", "rate": f"+{14 + random.uniform(0, 5):.2f}%"},
-        {"name": "코스모화학", "price": "56,700원", "rate": f"+{13 + random.uniform(0, 5):.2f}%"},
-        {"name": "신풍제약", "price": "42,100원", "rate": f"+{12 + random.uniform(0, 5):.2f}%"},
-        {"name": "씨젠", "price": "31,450원", "rate": f"+{11 + random.uniform(0, 5):.2f}%"}
+    # 시간대별로 다른 종목 풀
+    hour = datetime.now().hour
+    minute = datetime.now().minute
+    
+    # 종목 풀 (더 많은 종목)
+    all_stocks = [
+        {"name": "에코프로", "base_rate": 25},
+        {"name": "에코프로비엠", "base_rate": 23},
+        {"name": "포스코DX", "base_rate": 21},
+        {"name": "HD현대중공업", "base_rate": 19},
+        {"name": "한미반도체", "base_rate": 17},
+        {"name": "엘앤에프", "base_rate": 16},
+        {"name": "두산에너빌리티", "base_rate": 15},
+        {"name": "코스모화학", "base_rate": 14},
+        {"name": "신풍제약", "base_rate": 13},
+        {"name": "씨젠", "base_rate": 12},
+        {"name": "펄어비스", "base_rate": 11},
+        {"name": "카카오게임즈", "base_rate": 10},
+        {"name": "넷마블", "base_rate": 9},
+        {"name": "위메이드", "base_rate": 8},
+        {"name": "컴투스", "base_rate": 7}
     ]
     
-    # 시간대별로 다른 종목 선택 (실시간처럼 보이게)
-    hour = datetime.now().hour
-    if hour % 2 == 0:
-        # 짝수 시간
-        test_stocks = test_stocks[:10]
-    else:
-        # 홀수 시간 - 순서 섞기
-        random.shuffle(test_stocks)
-        test_stocks = test_stocks[:10]
+    # 10분마다 다른 조합
+    seed = (hour * 60 + minute) // 10
+    random.seed(seed)
+    random.shuffle(all_stocks)
+    selected = all_stocks[:10]
+    
+    # 정렬 (등락률 기준)
+    selected.sort(key=lambda x: x['base_rate'], reverse=True)
     
     stocks = []
-    for i, st in enumerate(test_stocks, 1):
-        # 간단한 뉴스 요약
-        news_samples = [
-            f"🟢 호재: {st['name']} 신규 계약 체결 소식\n🔴 악재: 단기 과열 주의",
-            f"🟢 호재: {st['name']} 실적 개선 기대\n🔴 악재: 차익실현 매물 출회",
-            f"🟢 호재: {st['name']} 기관 순매수 전환\n🔴 악재: 변동성 확대 우려"
-        ]
+    for i, st in enumerate(selected, 1):
+        # 등락률 변동
+        rate_value = st['base_rate'] + random.uniform(-2, 2)
+        rate = f"+{rate_value:.2f}%"
+        
+        # 가격 생성
+        base_prices = {
+            "에코프로": 152400, "에코프로비엠": 98300, "포스코DX": 45200,
+            "HD현대중공업": 112500, "한미반도체": 78600, "엘앤에프": 234500,
+            "두산에너빌리티": 18900, "코스모화학": 56700, "신풍제약": 42100,
+            "씨젠": 31450, "펄어비스": 28900, "카카오게임즈": 45600,
+            "넷마블": 67800, "위메이드": 34200, "컴투스": 89300
+        }
+        
+        price = f"{base_prices.get(st['name'], random.randint(20000, 200000)):,}원"
+        
+        # 뉴스 요약 (등락률에 따라 다르게)
+        if rate_value > 20:
+            summary = f"🟢 호재: {st['name']} 상한가 임박, 거래량 폭증\n🔴 악재: 단기 급등 후 조정 우려"
+        elif rate_value > 15:
+            summary = f"🟢 호재: {st['name']} 기관 대량 매수 유입\n🔴 악재: 차익실현 매물 대기"
+        elif rate_value > 10:
+            summary = f"🟢 호재: {st['name']} 실적 개선 기대감 상승\n🔴 악재: 변동성 확대 주의"
+        else:
+            summary = f"🟢 호재: {st['name']} 저가 매수세 유입\n🔴 악재: 추가 상승 모멘텀 부족"
         
         stocks.append({
             "rank": i,
             "name": st["name"],
-            "price": st["price"],
-            "rate": st["rate"],
-            "summary": random.choice(news_samples),
+            "price": price,
+            "rate": rate,
+            "summary": summary,
             "bullish_url": "",
             "bearish_url": "",
             "sources": []
         })
         
-        print(f"  {i}. {st['name']} - {st['price']} ({st['rate']})", flush=True)
+        print(f"  {i}. {st['name']} - {price} ({rate})", flush=True)
     
     return stocks
 
@@ -256,13 +283,63 @@ if __name__ == "__main__":
         print(f"시간: {datetime.now()}", flush=True)
         print("="*60, flush=True)
         
-        # 1. 토스 크롤링 진단
-        try:
-            try_toss_crawling()
-        except Exception as e:
-            print(f"크롤링 진단 실패: {e}", flush=True)
+        # ChromeDriver 진단
+        print("\n🔍 시스템 진단:", flush=True)
+        print("-"*40, flush=True)
         
-        # 2. 테스트 데이터 전송
+        try:
+            # Chrome 버전 확인
+            result = subprocess.run(['google-chrome', '--version'], capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"✅ Chrome: {result.stdout.strip()}", flush=True)
+            else:
+                print(f"❌ Chrome 실행 실패: {result.stderr}", flush=True)
+        except FileNotFoundError:
+            print("❌ Chrome이 설치되지 않음", flush=True)
+        except Exception as e:
+            print(f"❌ Chrome 확인 실패: {e}", flush=True)
+        
+        try:
+            # ChromeDriver 버전 확인
+            result = subprocess.run(['chromedriver', '--version'], capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"✅ ChromeDriver: {result.stdout.strip()}", flush=True)
+            else:
+                print(f"❌ ChromeDriver 실행 실패", flush=True)
+        except FileNotFoundError:
+            print("❌ ChromeDriver가 설치되지 않음", flush=True)
+        except Exception as e:
+            print(f"❌ ChromeDriver 확인 실패: {e}", flush=True)
+        
+        # 파일 존재 확인
+        paths_to_check = [
+            '/usr/bin/google-chrome',
+            '/usr/bin/chromedriver',
+            '/usr/local/bin/chromedriver'
+        ]
+        
+        print("\n📁 파일 시스템:", flush=True)
+        for path in paths_to_check:
+            if os.path.exists(path):
+                stats = os.stat(path)
+                print(f"  ✅ {path} (크기: {stats.st_size} bytes)", flush=True)
+            else:
+                print(f"  ❌ {path} 없음", flush=True)
+        
+        print("-"*40, flush=True)
+        
+        # 토스 크롤링 시도 (옵션)
+        try_crawling = False  # 일단 비활성화
+        
+        if try_crawling:
+            try:
+                try_toss_crawling()
+            except Exception as e:
+                print(f"크롤링 진단 실패: {e}", flush=True)
+        else:
+            print("\n⏭️ 토스 크롤링 스킵 (테스트 모드)", flush=True)
+        
+        # 테스트 데이터 전송
         print("\n" + "-"*60, flush=True)
         print("테스트 데이터로 대체하여 전송", flush=True)
         print("-"*60, flush=True)
@@ -276,4 +353,4 @@ if __name__ == "__main__":
         print("="*60, flush=True)
         
     else:
-        print("로컬 수동 모드 - 메뉴 표시")
+        print("로컬 수동 모드")
