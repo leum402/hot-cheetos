@@ -23,7 +23,7 @@ import requests
 
 from urllib.parse import quote_plus
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Union
 from dotenv import load_dotenv
 
 # =========================
@@ -53,7 +53,7 @@ class NewsCache:
     }
     """
     def __init__(self, cache_duration_minutes: int = 60):
-        self.cache: Dict[str, Tuple[dict|str, datetime]] = {}
+        self.cache: Dict[str, Tuple[Union[dict, str], datetime]] = {}
         self.cache_duration = timedelta(minutes=cache_duration_minutes)
         self.hit_count = 0
         self.miss_count = 0
@@ -221,7 +221,7 @@ def summarize_with_gpt_from_headlines(stock_name: str, rate_text: str, headlines
       "sources": [ {title,link,published}, ... ]
     }
     """
-    def _wrap(summary_text: str, bull_idx: int|None = None, bear_idx: int|None = None) -> dict:
+    def _wrap(summary_text: str, bull_idx: Optional[int] = None, bear_idx: Optional[int] = None) -> dict:
         bull_url = headlines[bull_idx-1]["link"] if headlines and bull_idx and 1 <= bull_idx <= len(headlines) else ""
         bear_url = headlines[bear_idx-1]["link"] if headlines and bear_idx and 1 <= bear_idx <= len(headlines) else ""
         return {
@@ -333,7 +333,7 @@ def get_gpt_news_with_context_cached(stock_name: str, current_rate: str) -> dict
 # =========================
 def setup_driver():
     options = Options()
-    options.add_argument('--headless')  # ← 주석 해제 필수!
+    options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
@@ -638,38 +638,75 @@ def main():
             driver.quit()
         news_cache.save_cache()
 
-# scraper.py의 main() 함수 끝부분 수정
+# =========================
+# 자동 실행 모드 (Docker/Production)
+# =========================
 if __name__ == "__main__":
-    # Docker/Production 환경에서는 자동으로 모드 선택
     import sys
     
     if len(sys.argv) > 1 or os.environ.get('DOCKER_ENV'):
-        # Docker 환경이거나 인자가 있으면 자동 실행
-        print("🚀 자동 모드: 토스 크롤링 시도, 실패시 테스트 데이터")
+        # Docker/자동 모드 - 무한 루프로 실행
+        print("🚀 자동 모드 실행 (Docker/Production)")
+        print("=" * 50)
         
-        driver = None
-        try:
-            driver = setup_driver()
-            url = 'https://www.tossinvest.com/?live-chart=heavy_soar'
-            print(f"📍 토스 접속 시도: {url}")
-            driver.get(url)
-            time.sleep(5)
+        cycle = 0
+        
+        # 무한 루프로 계속 실행
+        while True:
+            cycle += 1
+            print(f"\n⏰ [{cycle}회차] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
-            # 페이지 체크
-            if check_page_health(driver):
-                print("✅ 토스 페이지 정상 로드")
-                # 실제 크롤링 코드...
-            else:
-                raise Exception("토스 페이지 로드 실패")
+            # 캐시 정리 (60회마다)
+            if cycle % 60 == 0:
+                news_cache.cleanup()
+            
+            driver = None
+            data = None
+            
+            try:
+                # 토스 크롤링 시도
+                driver = setup_driver()
+                url = 'https://www.tossinvest.com/?live-chart=heavy_soar'
+                print(f"📍 토스 접속 시도: {url}")
+                driver.get(url)
+                time.sleep(5)
                 
-        except Exception as e:
-            print(f"⚠️ 토스 크롤링 실패: {e}")
-            print("📊 테스트 데이터로 대체")
-            if driver:
-                driver.quit()
-            # 테스트 데이터 생성
-            data = generate_test_data_with_cache()
-            send_to_api(data)
+                if check_page_health(driver):
+                    print("✅ 토스 페이지 정상 로드")
+                    soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    data = parse_toss_data_with_cache(soup, use_gpt=True)
+                    
+                    if data:
+                        send_to_api(data)
+                        print("✅ 토스 실시간 데이터 전송 완료")
+                    else:
+                        raise Exception("파싱 결과 없음")
+                else:
+                    raise Exception("페이지 로드 실패")
+                    
+            except Exception as e:
+                print(f"⚠️ 토스 크롤링 실패: {e}")
+                print("📊 테스트 데이터로 대체")
+                
+                # 테스트 데이터로 폴백
+                data = generate_test_data_with_cache()
+                if data:
+                    send_to_api(data)
+                    print("✅ 테스트 데이터 전송 완료")
+                    
+            finally:
+                # 드라이버 정리
+                if driver:
+                    try:
+                        driver.quit()
+                    except:
+                        pass
+            
+            # 다음 주기까지 대기
+            interval = get_update_interval()  # 장중 10초, 장외 60초
+            print(f"⏳ {interval}초 후 재실행...")
+            time.sleep(interval)
+            
     else:
-        # 로컬에서는 기존 메뉴 방식
+        # 로컬 수동 모드
         main()
